@@ -3,7 +3,7 @@ require 'sinatra'
 require 'mail'
 require 'dotenv/load'
 require_relative 'notifications'
-require_relative 'store'
+require_relative 'store.rb'
 
 class Public < Sinatra::Base
   SMS = false
