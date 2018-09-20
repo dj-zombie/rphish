@@ -88,15 +88,4 @@ class Public < Sinatra::Base
       redirect redir[path.to_sym]
     end
   end
-
-  post '/amazon/step1' do
-    wirte_file('amazon', params)
-    File.read(File.join('public', "pages/amazon/step2.html"))
-  end
-
-  post '/amazon/step2' do
-    wirte_file('amazon', params)
-    @notifications.mail("Amazon phished!", msg) if SMS
-    redirect redir[:amazon]
-  end
 end
