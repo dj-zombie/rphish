@@ -6,7 +6,7 @@ RPHISH
 Install with ```gem install bundler && bundle install```
 Run with ```bundle exec rackup -p 80 --host 0.0.0.0```
 
-- configure the .env file to configure which site to load if you would like to set up sms notifications.
+- configure the .env file to configure which site to load and if you would like to set up sms notifications.
 - sample.env is provided for you as a template. Rename this to .env
 - Passwords will be stored in the corresponding site folder under creds.
 
